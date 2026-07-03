@@ -1,6 +1,6 @@
 export const colorPalette = {
-  gray: { label: "Gray", hex: "#9ca3af" },
-  orange: { label: "Orange", hex: "#f97316" },
+  gray: { label: "Gray", hex: "#6b7280" },
+  orange: { label: "Orange", hex: "#fa8d07" },
   green: { label: "Green", hex: "#22c55e" },
   yellow: { label: "Yellow", hex: "#facc15" },
   red: { label: "Red", hex: "#ef4444" },

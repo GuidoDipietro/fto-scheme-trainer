@@ -5,6 +5,7 @@ const CENTER = 120;
 const HEX_SIDE = 68;
 const HEX_HEIGHT = Math.sqrt(3) * HEX_SIDE;
 const OUTER_TRIANGLE_HEIGHT = 28;
+const DISABLED_CENTER_FILL = "#d1d5db";
 
 const HEX_POINTS = {
   topLeft: { x: CENTER - HEX_SIDE / 2, y: CENTER - HEX_HEIGHT / 2 },
@@ -20,6 +21,30 @@ const POSITION_SIDES = {
   topRight: [HEX_POINTS.topRight, HEX_POINTS.rightMid],
   bottom: [HEX_POINTS.bottomLeft, HEX_POINTS.bottomRight],
 };
+
+const CENTER_TRIANGLES = [
+  [HEX_POINTS.topLeft, HEX_POINTS.topRight],
+  [HEX_POINTS.topRight, HEX_POINTS.rightMid],
+  [HEX_POINTS.rightMid, HEX_POINTS.bottomRight],
+  [HEX_POINTS.bottomRight, HEX_POINTS.bottomLeft],
+  [HEX_POINTS.bottomLeft, HEX_POINTS.leftMid],
+  [HEX_POINTS.leftMid, HEX_POINTS.topLeft],
+];
+
+const ACTIVE_TRIANGLES_BY_PAIR = {
+  "bottom-topLeft": [3, 4, 5],
+  "bottom-topRight": [1, 2, 3],
+  "topLeft-topRight": [5, 0, 1],
+};
+
+const HEX_OUTLINE_POINTS = [
+  HEX_POINTS.topLeft,
+  HEX_POINTS.topRight,
+  HEX_POINTS.rightMid,
+  HEX_POINTS.bottomRight,
+  HEX_POINTS.bottomLeft,
+  HEX_POINTS.leftMid,
+];
 
 const POSITION_LABELS = {
   topRight: "top right",
@@ -41,6 +66,10 @@ export function FtoCenter({
   targetPosition,
 }) {
   const mainFill = getColorHex(mainColor);
+  const activeTriangles = getActiveCenterTriangles(
+    revealedSecondary.position,
+    targetPosition,
+  );
   const positionPolygons = Object.fromEntries(
     Object.entries(POSITION_SIDES).map(([position, [start, end]]) => [
       position,
@@ -55,18 +84,35 @@ export function FtoCenter({
       role="img"
       aria-label={`FTO center with ${POSITION_LABELS[targetPosition]} piece highlighted`}
     >
+      {CENTER_TRIANGLES.map(([start, end], index) => (
+        <polygon
+          key={`center-triangle-${index}`}
+          data-center-triangle={index}
+          points={toPoints([{ x: CENTER, y: CENTER }, start, end])}
+          fill={activeTriangles.has(index) ? mainFill : DISABLED_CENTER_FILL}
+        />
+      ))}
+
+      {Object.entries(positionPolygons).map(([position, polygon]) => {
+        const isRevealed = position === revealedSecondary.position;
+        const wedgeFill = isRevealed ? getColorHex(revealedSecondary.color) : "transparent";
+
+        return (
+          <g key={`${position}-fill`} data-position={position}>
+            <polygon
+              points={toPoints(polygon)}
+              fill={wedgeFill}
+            />
+          </g>
+        );
+      })}
+
       <polygon
-        points={toPoints([
-          HEX_POINTS.topLeft,
-          HEX_POINTS.topRight,
-          HEX_POINTS.rightMid,
-          HEX_POINTS.bottomRight,
-          HEX_POINTS.bottomLeft,
-          HEX_POINTS.leftMid,
-        ])}
-        fill={mainFill}
+        points={toPoints(HEX_OUTLINE_POINTS)}
+        fill="none"
         stroke="#000000"
         strokeWidth="1.75"
+        strokeLinejoin="round"
       />
 
       {[
@@ -86,56 +132,45 @@ export function FtoCenter({
             y2={point.y}
             stroke="#000000"
             strokeWidth="1.75"
+            strokeLinecap="round"
           />
         ),
       )}
 
       {Object.entries(positionPolygons).map(([position, polygon]) => {
-        const isRevealed = position === revealedSecondary.position;
         const isTarget = position === targetPosition;
-        const isHidden = !isRevealed && !isTarget;
-        const wedgeFill = isRevealed ? getColorHex(revealedSecondary.color) : "transparent";
+        const isHidden = position !== revealedSecondary.position && !isTarget;
+        const [start, end, apex] = polygon;
 
         return (
-          <g key={position} data-position={position}>
-            {isTarget ? (
-              <polygon
-                points={toPoints(polygon)}
-                fill="none"
-                stroke="#111827"
-                strokeLinejoin="round"
-                strokeWidth="4.5"
-                filter="url(#target-shadow)"
-              />
-            ) : null}
-            <polygon
-              points={toPoints(polygon)}
-              fill={wedgeFill}
-              stroke={
-                isTarget
-                    ? "#000000"
-                  : isHidden
-                    ? "transparent"
-                    : "#000000"
-              }
-              strokeLinejoin="round"
-              strokeWidth={isTarget ? "1.75" : "1.75"}
-            />
+          <g key={`${position}-edges`} data-position={`${position}-edges`}>
+            {isHidden ? null : (
+              <>
+                <line
+                  x1={start.x}
+                  y1={start.y}
+                  x2={apex.x}
+                  y2={apex.y}
+                  stroke="#000000"
+                  strokeWidth={isTarget ? "2.25" : "1.75"}
+                  strokeLinejoin="round"
+                  strokeLinecap="round"
+                />
+                <line
+                  x1={apex.x}
+                  y1={apex.y}
+                  x2={end.x}
+                  y2={end.y}
+                  stroke="#000000"
+                  strokeWidth={isTarget ? "2.25" : "1.75"}
+                  strokeLinejoin="round"
+                  strokeLinecap="round"
+                />
+              </>
+            )}
           </g>
         );
       })}
-
-      <defs>
-        <filter id="target-shadow" x="-20%" y="-20%" width="140%" height="140%">
-          <feDropShadow
-            dx="0"
-            dy="1"
-            stdDeviation="1.4"
-            floodColor="#111827"
-            floodOpacity="0.16"
-          />
-        </filter>
-      </defs>
     </svg>
   );
 }
@@ -168,4 +203,11 @@ function buildOuterApex(start, end) {
 
 function distanceFromCenter(point) {
   return Math.hypot(point.x - CENTER, point.y - CENTER);
+}
+
+function getActiveCenterTriangles(revealedPosition, targetPosition) {
+  const pairKey = [revealedPosition, targetPosition].sort().join("-");
+  const indices = ACTIVE_TRIANGLES_BY_PAIR[pairKey] ?? [];
+
+  return new Set(indices);
 }

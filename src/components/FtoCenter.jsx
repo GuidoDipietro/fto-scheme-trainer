@@ -65,8 +65,8 @@ export function FtoCenter({
           HEX_POINTS.leftMid,
         ])}
         fill={mainFill}
-        stroke="rgba(15, 23, 42, 0.28)"
-        strokeWidth="2"
+        stroke="#000000"
+        strokeWidth="1.75"
       />
 
       {[
@@ -84,8 +84,8 @@ export function FtoCenter({
             y1={CENTER}
             x2={point.x}
             y2={point.y}
-            stroke="rgba(15, 23, 42, 0.72)"
-            strokeWidth="1.5"
+            stroke="#000000"
+            strokeWidth="1.75"
           />
         ),
       )}
@@ -93,7 +93,8 @@ export function FtoCenter({
       {Object.entries(positionPolygons).map(([position, polygon]) => {
         const isRevealed = position === revealedSecondary.position;
         const isTarget = position === targetPosition;
-        const wedgeFill = isRevealed ? getColorHex(revealedSecondary.color) : mainFill;
+        const isHidden = !isRevealed && !isTarget;
+        const wedgeFill = isRevealed ? getColorHex(revealedSecondary.color) : "transparent";
 
         return (
           <g key={position} data-position={position}>
@@ -103,16 +104,22 @@ export function FtoCenter({
                 fill="none"
                 stroke="#111827"
                 strokeLinejoin="round"
-                strokeWidth="7"
+                strokeWidth="4.5"
                 filter="url(#target-shadow)"
               />
             ) : null}
             <polygon
               points={toPoints(polygon)}
               fill={wedgeFill}
-              stroke={isTarget ? "#f8fafc" : "rgba(15, 23, 42, 0.68)"}
+              stroke={
+                isTarget
+                    ? "#000000"
+                  : isHidden
+                    ? "transparent"
+                    : "#000000"
+              }
               strokeLinejoin="round"
-              strokeWidth={isTarget ? "2.2" : "2.5"}
+              strokeWidth={isTarget ? "1.75" : "1.75"}
             />
           </g>
         );

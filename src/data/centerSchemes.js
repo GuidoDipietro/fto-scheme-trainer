@@ -12,8 +12,8 @@ export const centerSchemes = [
     id: "orange",
     mainColor: "orange",
     secondaryColorsByPosition: {
-      topRight: "white",
-      topLeft: "green",
+      topRight: "yellow",
+      topLeft: "purple",
       bottom: "blue",
     },
   },
@@ -22,8 +22,8 @@ export const centerSchemes = [
     mainColor: "green",
     secondaryColorsByPosition: {
       topRight: "yellow",
-      topLeft: "orange",
-      bottom: "pink",
+      topLeft: "red",
+      bottom: "purple",
     },
   },
 ];

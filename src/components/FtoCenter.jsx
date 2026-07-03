@@ -141,6 +141,7 @@ export function FtoCenter({
         const isTarget = position === targetPosition;
         const isHidden = position !== revealedSecondary.position && !isTarget;
         const [start, end, apex] = polygon;
+        const labelPoint = getInsetTriangleLabelPoint(polygon);
 
         return (
           <g key={`${position}-edges`} data-position={`${position}-edges`}>
@@ -168,6 +169,21 @@ export function FtoCenter({
                 />
               </>
             )}
+
+            {isTarget ? (
+              <text
+                x={labelPoint.x}
+                y={labelPoint.y}
+                fill="#dc2626"
+                fillOpacity="0.72"
+                fontSize="16"
+                fontWeight="600"
+                textAnchor="middle"
+                dominantBaseline="middle"
+              >
+                ?
+              </text>
+            ) : null}
           </g>
         );
       })}
@@ -210,4 +226,24 @@ function getActiveCenterTriangles(revealedPosition, targetPosition) {
   const indices = ACTIVE_TRIANGLES_BY_PAIR[pairKey] ?? [];
 
   return new Set(indices);
+}
+
+function getTriangleCentroid(points) {
+  return {
+    x: (points[0].x + points[1].x + points[2].x) / 3,
+    y: (points[0].y + points[1].y + points[2].y) / 3,
+  };
+}
+
+function getInsetTriangleLabelPoint(points) {
+  const [start, end, apex] = points;
+  const baseMidpoint = {
+    x: (start.x + end.x) / 2,
+    y: (start.y + end.y) / 2,
+  };
+
+  return {
+    x: baseMidpoint.x + (apex.x - baseMidpoint.x) * 0.42,
+    y: baseMidpoint.y + (apex.y - baseMidpoint.y) * 0.42,
+  };
 }

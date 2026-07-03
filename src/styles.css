@@ -1,0 +1,218 @@
+:root {
+  color-scheme: light;
+  font-family: "Space Grotesk", "Avenir Next", sans-serif;
+  line-height: 1.4;
+  font-weight: 400;
+  color: #10211b;
+  background:
+    radial-gradient(circle at top, rgba(255, 237, 213, 0.92), transparent 35%),
+    radial-gradient(circle at 20% 20%, rgba(254, 240, 138, 0.35), transparent 25%),
+    linear-gradient(160deg, #fffdf5, #eef7f1 55%, #e2eef7);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+.app-shell {
+  width: min(980px, calc(100vw - 2rem));
+  margin: 0 auto;
+  min-height: 100vh;
+  display: grid;
+  gap: 1.5rem;
+  padding: 2rem 0 3rem;
+  align-content: center;
+}
+
+.hero-panel,
+.trainer-card {
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  border-radius: 28px;
+  box-shadow: 0 18px 60px rgba(16, 33, 27, 0.12);
+}
+
+.hero-panel {
+  padding: 1.5rem 1.75rem;
+}
+
+.eyebrow {
+  margin: 0 0 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  font-size: 0.76rem;
+  color: #b45309;
+}
+
+.hero-panel h1 {
+  margin: 0;
+  font-size: clamp(2.2rem, 5vw, 3.8rem);
+  line-height: 0.95;
+  max-width: 11ch;
+}
+
+.intro {
+  margin: 1rem 0 0;
+  max-width: 58ch;
+  color: #355047;
+  font-size: 1.05rem;
+}
+
+.stats-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin-top: 1.25rem;
+}
+
+.stats-row article {
+  background: rgba(255, 251, 235, 0.92);
+  border-radius: 18px;
+  padding: 0.9rem 1rem;
+}
+
+.stats-row span {
+  display: block;
+  font-size: 0.82rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #78716c;
+}
+
+.stats-row strong {
+  font-size: 1.7rem;
+}
+
+.trainer-card {
+  padding: 1.5rem;
+  display: grid;
+  gap: 1.25rem;
+}
+
+.center-stage {
+  display: grid;
+  place-items: center;
+  min-height: 320px;
+  border-radius: 24px;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.94), rgba(244, 248, 251, 0.9)),
+    repeating-linear-gradient(
+      -45deg,
+      rgba(15, 23, 42, 0.018),
+      rgba(15, 23, 42, 0.018) 10px,
+      transparent 10px,
+      transparent 20px
+    );
+}
+
+.fto-center {
+  width: min(100%, 360px);
+  overflow: visible;
+}
+
+.answer-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.9rem;
+}
+
+.answer-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.8rem;
+  border: none;
+  border-radius: 18px;
+  min-height: 68px;
+  padding: 0.9rem 1rem;
+  background: #10211b;
+  color: #f8fafc;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    transform 140ms ease,
+    box-shadow 140ms ease,
+    background-color 140ms ease;
+  box-shadow: 0 14px 28px rgba(16, 33, 27, 0.18);
+}
+
+.answer-button:hover {
+  transform: translateY(-1px);
+  background: #163328;
+}
+
+.answer-button:focus-visible {
+  outline: 3px solid rgba(245, 158, 11, 0.9);
+  outline-offset: 3px;
+}
+
+.answer-swatch {
+  width: 1rem;
+  height: 1rem;
+  border-radius: 999px;
+  border: 2px solid rgba(255, 255, 255, 0.75);
+}
+
+.status-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  color: #355047;
+}
+
+.status-row p {
+  margin: 0;
+}
+
+.status-ok {
+  color: #166534;
+}
+
+.status-bad {
+  color: #991b1b;
+}
+
+@media (max-width: 720px) {
+  .app-shell {
+    padding: 1rem 0 2rem;
+    width: min(100vw - 1rem, 980px);
+  }
+
+  .hero-panel,
+  .trainer-card {
+    border-radius: 22px;
+  }
+
+  .stats-row,
+  .answer-row {
+    grid-template-columns: 1fr;
+  }
+
+  .hero-panel h1 {
+    max-width: none;
+  }
+
+  .center-stage {
+    min-height: 260px;
+  }
+}

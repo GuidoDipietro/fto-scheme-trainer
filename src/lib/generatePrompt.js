@@ -1,0 +1,52 @@
+import { centerSchemes, trainerPositions } from "../data/centerSchemes";
+
+function randomItem(items) {
+  return items[Math.floor(Math.random() * items.length)];
+}
+
+export function buildPrompt(center, revealedPosition, targetPosition) {
+  if (revealedPosition === targetPosition) {
+    throw new Error("revealedPosition and targetPosition must differ");
+  }
+
+  const positions = trainerPositions.filter(
+    (position) => position !== revealedPosition,
+  );
+  const correctAnswer = center.secondaryColorsByPosition[targetPosition];
+  const distractor = positions
+    .filter((position) => position !== targetPosition)
+    .map((position) => center.secondaryColorsByPosition[position])[0];
+
+  return {
+    center,
+    revealedSecondary: {
+      position: revealedPosition,
+      color: center.secondaryColorsByPosition[revealedPosition],
+    },
+    targetPosition,
+    correctAnswer,
+    distractor,
+    answerOptions: shuffle([correctAnswer, distractor]),
+  };
+}
+
+function shuffle(items) {
+  const clone = [...items];
+
+  for (let index = clone.length - 1; index > 0; index -= 1) {
+    const swapIndex = Math.floor(Math.random() * (index + 1));
+    [clone[index], clone[swapIndex]] = [clone[swapIndex], clone[index]];
+  }
+
+  return clone;
+}
+
+export function generatePrompt() {
+  const center = randomItem(centerSchemes);
+  const revealedPosition = randomItem(trainerPositions);
+  const targetPosition = randomItem(
+    trainerPositions.filter((position) => position !== revealedPosition),
+  );
+
+  return buildPrompt(center, revealedPosition, targetPosition);
+}

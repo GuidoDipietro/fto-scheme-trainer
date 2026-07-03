@@ -30,7 +30,6 @@ export default function App() {
   const { prompt, lastResult } = session;
   const promptColors = prompt.answerOptions.map((colorId) => ({
     id: colorId,
-    label: getColorLabel(colorId),
     hex: colorPalette[colorId].hex,
   }));
 
@@ -52,13 +51,10 @@ export default function App() {
               type="button"
               className="answer-button"
               onClick={() => handleAnswer(option.id)}
+              style={{ backgroundColor: option.hex }}
+              aria-label={`Choose ${getColorLabel(option.id)}`}
             >
-              <span
-                className="answer-swatch"
-                style={{ backgroundColor: option.hex }}
-                aria-hidden="true"
-              />
-              <span>{option.label}</span>
+              <span className="sr-only">{getColorLabel(option.id)}</span>
             </button>
           ))}
         </div>
@@ -66,8 +62,7 @@ export default function App() {
         <div className="status-row" aria-live="polite">
           {lastResult ? (
             <p className={lastResult.isCorrect ? "status-ok" : "status-bad"}>
-              {lastResult.isCorrect ? "Correct." : "Incorrect."} Answer was{" "}
-              <strong>{getColorLabel(lastResult.correctAnswer)}</strong>.
+              {lastResult.isCorrect ? "Correct." : "Incorrect."}
             </p>
           ) : (
             <p>Pick the color for the highlighted piece.</p>

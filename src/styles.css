@@ -35,13 +35,11 @@ select {
   width: min(980px, calc(100vw - 2rem));
   margin: 0 auto;
   min-height: 100vh;
-  display: grid;
-  gap: 1.5rem;
-  padding: 2rem 0 3rem;
-  align-content: center;
+  display: flex;
+  align-items: center;
+  padding: 2rem 0;
 }
 
-.hero-panel,
 .trainer-card {
   background: rgba(255, 255, 255, 0.72);
   backdrop-filter: blur(12px);
@@ -50,58 +48,8 @@ select {
   box-shadow: 0 18px 60px rgba(16, 33, 27, 0.12);
 }
 
-.hero-panel {
-  padding: 1.5rem 1.75rem;
-}
-
-.eyebrow {
-  margin: 0 0 0.75rem;
-  text-transform: uppercase;
-  letter-spacing: 0.18em;
-  font-size: 0.76rem;
-  color: #b45309;
-}
-
-.hero-panel h1 {
-  margin: 0;
-  font-size: clamp(2.2rem, 5vw, 3.8rem);
-  line-height: 0.95;
-  max-width: 11ch;
-}
-
-.intro {
-  margin: 1rem 0 0;
-  max-width: 58ch;
-  color: #355047;
-  font-size: 1.05rem;
-}
-
-.stats-row {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 0.75rem;
-  margin-top: 1.25rem;
-}
-
-.stats-row article {
-  background: rgba(255, 251, 235, 0.92);
-  border-radius: 18px;
-  padding: 0.9rem 1rem;
-}
-
-.stats-row span {
-  display: block;
-  font-size: 0.82rem;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: #78716c;
-}
-
-.stats-row strong {
-  font-size: 1.7rem;
-}
-
 .trainer-card {
+  width: 100%;
   padding: 1.5rem;
   display: grid;
   gap: 1.25rem;
@@ -176,14 +124,16 @@ select {
 
 .status-row {
   display: flex;
-  justify-content: space-between;
-  gap: 1rem;
-  flex-wrap: wrap;
+  justify-content: center;
+  min-height: 2rem;
   color: #355047;
+  text-align: center;
 }
 
 .status-row p {
   margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
 }
 
 .status-ok {
@@ -200,18 +150,12 @@ select {
     width: min(100vw - 1rem, 980px);
   }
 
-  .hero-panel,
   .trainer-card {
     border-radius: 22px;
   }
 
-  .stats-row,
   .answer-row {
     grid-template-columns: 1fr;
-  }
-
-  .hero-panel h1 {
-    max-width: none;
   }
 
   .center-stage {

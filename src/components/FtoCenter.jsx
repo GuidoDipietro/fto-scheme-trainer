@@ -2,13 +2,23 @@ import { colorPalette } from "../data/colors";
 
 const VIEWBOX_SIZE = 240;
 const CENTER = 120;
-const HEX_RADIUS = 72;
-const INNER_RADIUS = 34;
+const HEX_SIDE = 68;
+const HEX_HEIGHT = Math.sqrt(3) * HEX_SIDE;
+const OUTER_TRIANGLE_HEIGHT = 28;
 
-const POSITION_ANGLES = {
-  topRight: -30,
-  topLeft: -150,
-  bottom: 90,
+const HEX_POINTS = {
+  topLeft: { x: CENTER - HEX_SIDE / 2, y: CENTER - HEX_HEIGHT / 2 },
+  topRight: { x: CENTER + HEX_SIDE / 2, y: CENTER - HEX_HEIGHT / 2 },
+  rightMid: { x: CENTER + HEX_SIDE, y: CENTER },
+  bottomRight: { x: CENTER + HEX_SIDE / 2, y: CENTER + HEX_HEIGHT / 2 },
+  bottomLeft: { x: CENTER - HEX_SIDE / 2, y: CENTER + HEX_HEIGHT / 2 },
+  leftMid: { x: CENTER - HEX_SIDE, y: CENTER },
+};
+
+const POSITION_SIDES = {
+  topLeft: [HEX_POINTS.leftMid, HEX_POINTS.topLeft],
+  topRight: [HEX_POINTS.topRight, HEX_POINTS.rightMid],
+  bottom: [HEX_POINTS.bottomLeft, HEX_POINTS.bottomRight],
 };
 
 const POSITION_LABELS = {
@@ -17,33 +27,8 @@ const POSITION_LABELS = {
   bottom: "bottom",
 };
 
-function polarPoint(radius, angleDegrees) {
-  const angle = (Math.PI / 180) * angleDegrees;
-
-  return {
-    x: CENTER + radius * Math.cos(angle),
-    y: CENTER + radius * Math.sin(angle),
-  };
-}
-
 function toPoints(points) {
   return points.map((point) => `${point.x},${point.y}`).join(" ");
-}
-
-function createWedge(angleDegrees) {
-  const start = polarPoint(INNER_RADIUS, angleDegrees - 30);
-  const end = polarPoint(INNER_RADIUS, angleDegrees + 30);
-  const outer = polarPoint(HEX_RADIUS, angleDegrees);
-
-  return [start, end, outer];
-}
-
-function createHexTriangle(index) {
-  const start = polarPoint(0, 0);
-  const left = polarPoint(INNER_RADIUS, index * 60 - 30);
-  const right = polarPoint(INNER_RADIUS, index * 60 + 30);
-
-  return [start, left, right];
 }
 
 function getColorHex(colorId) {
@@ -56,6 +41,12 @@ export function FtoCenter({
   targetPosition,
 }) {
   const mainFill = getColorHex(mainColor);
+  const positionPolygons = Object.fromEntries(
+    Object.entries(POSITION_SIDES).map(([position, [start, end]]) => [
+      position,
+      [start, end, buildOuterApex(start, end)],
+    ]),
+  );
 
   return (
     <svg
@@ -64,64 +55,110 @@ export function FtoCenter({
       role="img"
       aria-label={`FTO center with ${POSITION_LABELS[targetPosition]} piece highlighted`}
     >
-      <g transform={`translate(${CENTER}, ${CENTER})`}>
-        {[0, 1, 2, 3, 4, 5].map((index) => {
-          const points = createHexTriangle(index).map((point) => ({
-            x: point.x - CENTER,
-            y: point.y - CENTER,
-          }));
+      <polygon
+        points={toPoints([
+          HEX_POINTS.topLeft,
+          HEX_POINTS.topRight,
+          HEX_POINTS.rightMid,
+          HEX_POINTS.bottomRight,
+          HEX_POINTS.bottomLeft,
+          HEX_POINTS.leftMid,
+        ])}
+        fill={mainFill}
+        stroke="rgba(15, 23, 42, 0.28)"
+        strokeWidth="2"
+      />
 
-          return (
-            <polygon
-              key={`hex-${index}`}
-              points={toPoints(points)}
-              fill={mainFill}
-              stroke="rgba(15, 23, 42, 0.28)"
-              strokeWidth="2"
-            />
-          );
-        })}
-      </g>
+      {[
+        HEX_POINTS.topLeft,
+        HEX_POINTS.topRight,
+        HEX_POINTS.leftMid,
+        HEX_POINTS.rightMid,
+        HEX_POINTS.bottomLeft,
+        HEX_POINTS.bottomRight,
+      ].map(
+        (point, index) => (
+          <line
+            key={`main-line-${index}`}
+            x1={CENTER}
+            y1={CENTER}
+            x2={point.x}
+            y2={point.y}
+            stroke="rgba(15, 23, 42, 0.72)"
+            strokeWidth="1.5"
+          />
+        ),
+      )}
 
-      {Object.entries(POSITION_ANGLES).map(([position, angle]) => {
+      {Object.entries(positionPolygons).map(([position, polygon]) => {
         const isRevealed = position === revealedSecondary.position;
         const isTarget = position === targetPosition;
         const wedgeFill = isRevealed ? getColorHex(revealedSecondary.color) : mainFill;
-        const wedgePoints = createWedge(angle);
 
         return (
           <g key={position} data-position={position}>
-            <polygon
-              points={toPoints(wedgePoints)}
-              fill={wedgeFill}
-              stroke={isTarget ? "#f8fafc" : "rgba(15, 23, 42, 0.42)"}
-              strokeWidth={isTarget ? "5" : "3"}
-              filter={isTarget ? "url(#target-glow)" : undefined}
-            />
             {isTarget ? (
               <polygon
-                points={toPoints(wedgePoints)}
+                points={toPoints(polygon)}
                 fill="none"
-                stroke="rgba(255, 255, 255, 0.55)"
-                strokeWidth="10"
-                opacity="0.75"
+                stroke="#111827"
+                strokeLinejoin="round"
+                strokeWidth="7"
+                filter="url(#target-shadow)"
               />
             ) : null}
+            <polygon
+              points={toPoints(polygon)}
+              fill={wedgeFill}
+              stroke={isTarget ? "#f8fafc" : "rgba(15, 23, 42, 0.68)"}
+              strokeLinejoin="round"
+              strokeWidth={isTarget ? "2.2" : "2.5"}
+            />
           </g>
         );
       })}
 
       <defs>
-        <filter id="target-glow" x="-20%" y="-20%" width="140%" height="140%">
+        <filter id="target-shadow" x="-20%" y="-20%" width="140%" height="140%">
           <feDropShadow
             dx="0"
-            dy="0"
-            stdDeviation="6"
-            floodColor="#fff7d6"
-            floodOpacity="0.95"
+            dy="1"
+            stdDeviation="1.4"
+            floodColor="#111827"
+            floodOpacity="0.16"
           />
         </filter>
       </defs>
     </svg>
   );
+}
+
+function buildOuterApex(start, end) {
+  const midpoint = {
+    x: (start.x + end.x) / 2,
+    y: (start.y + end.y) / 2,
+  };
+  const edge = {
+    x: end.x - start.x,
+    y: end.y - start.y,
+  };
+  const edgeLength = Math.hypot(edge.x, edge.y) || 1;
+  const normalA = { x: -edge.y / edgeLength, y: edge.x / edgeLength };
+  const normalB = { x: edge.y / edgeLength, y: -edge.x / edgeLength };
+  const candidateA = {
+    x: midpoint.x + normalA.x * OUTER_TRIANGLE_HEIGHT,
+    y: midpoint.y + normalA.y * OUTER_TRIANGLE_HEIGHT,
+  };
+  const candidateB = {
+    x: midpoint.x + normalB.x * OUTER_TRIANGLE_HEIGHT,
+    y: midpoint.y + normalB.y * OUTER_TRIANGLE_HEIGHT,
+  };
+
+  return distanceFromCenter(candidateA) > distanceFromCenter(candidateB)
+    ? candidateA
+    : candidateB;
+}
+
+function distanceFromCenter(point) {
+  return Math.hypot(point.x - CENTER, point.y - CENTER);
 }

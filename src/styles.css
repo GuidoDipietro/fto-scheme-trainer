@@ -110,22 +110,24 @@ select {
 .center-stage {
   display: grid;
   place-items: center;
-  min-height: 320px;
+  min-height: 420px;
   border-radius: 24px;
   background:
-    linear-gradient(135deg, rgba(255, 255, 255, 0.94), rgba(244, 248, 251, 0.9)),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(244, 248, 251, 0.94)),
     repeating-linear-gradient(
       -45deg,
-      rgba(15, 23, 42, 0.018),
-      rgba(15, 23, 42, 0.018) 10px,
+      rgba(15, 23, 42, 0.012),
+      rgba(15, 23, 42, 0.012) 10px,
       transparent 10px,
       transparent 20px
     );
+  border: 1px solid rgba(148, 163, 184, 0.18);
 }
 
 .fto-center {
-  width: min(100%, 360px);
+  width: min(100%, 520px);
   overflow: visible;
+  filter: drop-shadow(0 12px 24px rgba(15, 23, 42, 0.08));
 }
 
 .answer-row {
@@ -213,6 +215,6 @@ select {
   }
 
   .center-stage {
-    min-height: 260px;
+    min-height: 300px;
   }
 }

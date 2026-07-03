@@ -19,11 +19,15 @@ describe("FtoCenter", () => {
     ).toBeInTheDocument();
 
     const topLeft = container.querySelector('[data-position="topLeft"] polygon');
-    const topRight = container.querySelector(
-      '[data-position="topRight"] polygon',
+    const topLeftPolygons = container.querySelectorAll(
+      '[data-position="topLeft"] polygon',
     );
+    const topRight = container.querySelector('[data-position="topRight"] polygon');
 
-    expect(topLeft).toHaveAttribute("stroke-width", "5");
+    expect(topLeft).toBeInTheDocument();
+    expect(topLeftPolygons[0]).toHaveAttribute("stroke-width", "7");
+    expect(topLeftPolygons[0]).toHaveAttribute("stroke", "#111827");
+    expect(topLeftPolygons[1]).toHaveAttribute("stroke", "#f8fafc");
     expect(topRight).toHaveAttribute("fill", "#facc15");
   });
 });

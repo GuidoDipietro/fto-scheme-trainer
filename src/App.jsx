@@ -5,9 +5,11 @@ import { centerSchemes } from "./data/centerSchemes";
 import { generatePrompt, rotateCenter } from "./lib/generatePrompt";
 
 const selectableCenterIds = centerSchemes.map((center) => center.id);
+const defaultGuessesPerRun = 20;
 const wrongFlashDurationMs = 220;
 const timerTickMs = 100;
 const caseStatsStorageKey = "fto-scheme-trainer-case-stats";
+const settingsStorageKey = "fto-scheme-trainer-settings";
 
 const defaultStatsSort = {
   metric: "averageTime",
@@ -46,6 +48,35 @@ function clearStoredCaseStats() {
   }
 
   window.localStorage.removeItem(caseStatsStorageKey);
+}
+
+function getStoredSettings() {
+  if (typeof window === "undefined") {
+    return { guessesPerRun: defaultGuessesPerRun };
+  }
+
+  try {
+    const rawSettings = window.localStorage.getItem(settingsStorageKey);
+    const parsedSettings = rawSettings ? JSON.parse(rawSettings) : {};
+    const guessesPerRun = Number(parsedSettings.guessesPerRun);
+
+    return {
+      guessesPerRun:
+        Number.isInteger(guessesPerRun) && guessesPerRun > 0
+          ? guessesPerRun
+          : defaultGuessesPerRun,
+    };
+  } catch {
+    return { guessesPerRun: defaultGuessesPerRun };
+  }
+}
+
+function storeSettings(settings) {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  window.localStorage.setItem(settingsStorageKey, JSON.stringify(settings));
 }
 
 function formatElapsedMs(elapsedMs) {
@@ -163,29 +194,49 @@ function sortStatsRows(rows, statsSort) {
   });
 }
 
-const createInitialState = () => ({
+const createInitialState = (guessesPerRun) => ({
   selectedCenterIds: selectableCenterIds,
-  prompt: generatePrompt(selectableCenterIds),
+  prompt: null,
+  isAwaitingRunStart: true,
+  completedRunCount: 0,
+  casesRemainingInRun: guessesPerRun,
   isWrongGuessActive: false,
   isSoundMuted: false,
-  promptStartedAtMs: getNow(),
+  promptStartedAtMs: null,
   elapsedMs: 0,
 });
 
 export default function App() {
-  const [session, setSession] = useState(createInitialState);
+  const [settings, setSettings] = useState(getStoredSettings);
+  const [session, setSession] = useState(() =>
+    createInitialState(getStoredSettings().guessesPerRun),
+  );
   const [caseStats, setCaseStats] = useState(getStoredCaseStats);
   const [isStatsOpen, setIsStatsOpen] = useState(true);
   const [statsSort, setStatsSort] = useState(defaultStatsSort);
   const [revealedStatsCases, setRevealedStatsCases] = useState({});
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const wrongFlashTimeoutRef = useRef(null);
   const audioContextRef = useRef(null);
+
+  const startRun = () => {
+    setSession((current) => ({
+      ...current,
+      prompt: generatePrompt(current.selectedCenterIds),
+      isAwaitingRunStart: false,
+      promptStartedAtMs: getNow(),
+      elapsedMs: 0,
+    }));
+  };
 
   useEffect(() => {
     const intervalId = window.setInterval(() => {
       setSession((current) => ({
         ...current,
-        elapsedMs: getNow() - current.promptStartedAtMs,
+        elapsedMs:
+          current.promptStartedAtMs == null
+            ? 0
+            : getNow() - current.promptStartedAtMs,
       }));
     }, timerTickMs);
 
@@ -193,6 +244,43 @@ export default function App() {
       window.clearInterval(intervalId);
     };
   }, []);
+
+  useEffect(() => {
+    const handleKeyDown = (event) => {
+      if (event.code === "Space") {
+        event.preventDefault();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown, { passive: false });
+
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!session.isAwaitingRunStart) {
+      return undefined;
+    }
+
+    const handleKeyDown = (event) => {
+      if (
+        event.target instanceof HTMLElement &&
+        ["INPUT", "TEXTAREA", "SELECT"].includes(event.target.tagName)
+      ) {
+        return;
+      }
+
+      startRun();
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [session.isAwaitingRunStart]);
 
   useEffect(
     () => () => {
@@ -360,10 +448,15 @@ export default function App() {
 
       return {
         selectedCenterIds: nextSelectedCenterIds,
-        prompt: generatePrompt(nextSelectedCenterIds),
+        prompt: current.isAwaitingRunStart
+          ? null
+          : generatePrompt(nextSelectedCenterIds),
+        isAwaitingRunStart: current.isAwaitingRunStart,
+        completedRunCount: current.completedRunCount,
+        casesRemainingInRun: current.casesRemainingInRun,
         isWrongGuessActive: false,
         isSoundMuted: current.isSoundMuted,
-        promptStartedAtMs: getNow(),
+        promptStartedAtMs: current.isAwaitingRunStart ? null : getNow(),
         elapsedMs: 0,
       };
     });
@@ -405,7 +498,25 @@ export default function App() {
     }));
   };
 
+  const handleGuessesPerRunChange = (nextValue) => {
+    const guessesPerRun = Math.max(1, Number.parseInt(nextValue, 10) || 1);
+    const nextSettings = { guessesPerRun };
+
+    setSettings(nextSettings);
+    storeSettings(nextSettings);
+    setSession((current) => ({
+      ...current,
+      casesRemainingInRun: current.isAwaitingRunStart
+        ? guessesPerRun
+        : current.casesRemainingInRun,
+    }));
+  };
+
   const handleAnswer = (selectedColor) => {
+    if (!session.prompt) {
+      return;
+    }
+
     const isCorrect = selectedColor === session.prompt.correctAnswer;
     const elapsedMs = getNow() - session.promptStartedAtMs;
 
@@ -426,27 +537,46 @@ export default function App() {
     });
     playSuccessSound();
 
-    setSession((current) => ({
-      selectedCenterIds: current.selectedCenterIds,
-      prompt: generatePrompt(current.selectedCenterIds),
-      isWrongGuessActive: false,
-      isSoundMuted: current.isSoundMuted,
-      promptStartedAtMs: getNow(),
-      elapsedMs: 0,
-    }));
+    setSession((current) => {
+      const nextCasesRemainingInRun = current.casesRemainingInRun - 1;
+
+      if (nextCasesRemainingInRun === 0) {
+        return {
+          ...current,
+          prompt: null,
+          isAwaitingRunStart: true,
+          completedRunCount: current.completedRunCount + 1,
+          casesRemainingInRun: settings.guessesPerRun,
+          isWrongGuessActive: false,
+          promptStartedAtMs: null,
+          elapsedMs: 0,
+        };
+      }
+
+      return {
+        ...current,
+        prompt: generatePrompt(current.selectedCenterIds),
+        casesRemainingInRun: nextCasesRemainingInRun,
+        isWrongGuessActive: false,
+        promptStartedAtMs: getNow(),
+        elapsedMs: 0,
+      };
+    });
   };
 
   const {
     prompt,
     selectedCenterIds,
+    isAwaitingRunStart,
+    completedRunCount,
     isWrongGuessActive,
     isSoundMuted,
     elapsedMs,
   } = session;
-  const promptColors = prompt.answerOptions.map((colorId) => ({
+  const promptColors = prompt?.answerOptions.map((colorId) => ({
     id: colorId,
     hex: colorPalette[colorId].hex,
-  }));
+  })) ?? [];
   const statsRows = sortStatsRows(buildStatsRows(caseStats), statsSort);
 
   return (
@@ -524,35 +654,102 @@ export default function App() {
                 {isSoundMuted ? "Muted" : "Sound on"}
               </span>
             </button>
+
+            <button
+              type="button"
+              className={`settings-toggle${isSettingsOpen ? " is-open" : ""}`}
+              onClick={() => setIsSettingsOpen((current) => !current)}
+              aria-expanded={isSettingsOpen}
+              aria-label="Open settings"
+            >
+              <svg
+                aria-hidden="true"
+                className="settings-toggle-icon"
+                viewBox="0 0 24 24"
+                fill="none"
+              >
+                <path
+                  d="M10.5 3.75h3l.45 2.06c.4.14.78.3 1.14.5l1.9-.92 2.12 2.12-.92 1.9c.2.36.36.74.5 1.14l2.06.45v3l-2.06.45c-.14.4-.3.78-.5 1.14l.92 1.9-2.12 2.12-1.9-.92c-.36.2-.74.36-1.14.5l-.45 2.06h-3l-.45-2.06a7.6 7.6 0 0 1-1.14-.5l-1.9.92-2.12-2.12.92-1.9a7.6 7.6 0 0 1-.5-1.14l-2.06-.45v-3l2.06-.45c.14-.4.3-.78.5-1.14l-.92-1.9 2.12-2.12 1.9.92c.36-.2.74-.36 1.14-.5l.45-2.06Z"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+                <path
+                  d="M12 15.25A3.25 3.25 0 1 0 12 8.75a3.25 3.25 0 0 0 0 6.5Z"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </button>
           </div>
 
           <div className="center-stage">
-            <FtoCenter
-              mainColor={prompt.center.mainColor}
-              revealedSecondary={prompt.revealedSecondary}
-              targetPosition={prompt.targetPosition}
-            />
+            {prompt ? (
+              <FtoCenter
+                mainColor={prompt.center.mainColor}
+                revealedSecondary={prompt.revealedSecondary}
+                targetPosition={prompt.targetPosition}
+              />
+            ) : (
+              <button
+                type="button"
+                className="run-start-panel"
+                onClick={startRun}
+              >
+                <p className="run-start-copy">
+                  {completedRunCount > 0
+                    ? "Press any key to continue."
+                    : "Press any key to start."}
+                </p>
+                <p className="run-start-subcopy">
+                  {settings.guessesPerRun}-case set
+                </p>
+              </button>
+            )}
           </div>
         </div>
 
-        <div className="answer-row" aria-label="Answer choices">
-          {promptColors.map((option) => (
-            <button
-              key={option.id}
-              type="button"
-              className="answer-button"
-              onClick={() => handleAnswer(option.id)}
-              style={{ backgroundColor: option.hex }}
-              aria-label={`Choose ${getColorLabel(option.id)}`}
-            >
-              <span className="sr-only">{getColorLabel(option.id)}</span>
-            </button>
-          ))}
-        </div>
+        {isSettingsOpen ? (
+          <div className="settings-panel">
+            <label className="settings-field">
+              <span className="settings-label">Training batch</span>
+              <input
+                type="number"
+                min="1"
+                step="1"
+                className="settings-input"
+                value={settings.guessesPerRun}
+                onChange={(event) => handleGuessesPerRunChange(event.target.value)}
+              />
+            </label>
+          </div>
+        ) : null}
 
-        <p className="timer-readout" aria-label="Case timer">
-          {formatElapsedMs(elapsedMs)}
-        </p>
+        {prompt ? (
+          <>
+            <div className="answer-row" aria-label="Answer choices">
+              {promptColors.map((option) => (
+                <button
+                  key={option.id}
+                  type="button"
+                  className="answer-button"
+                  onClick={() => handleAnswer(option.id)}
+                  style={{ backgroundColor: option.hex }}
+                  aria-label={`Choose ${getColorLabel(option.id)}`}
+                >
+                  <span className="sr-only">{getColorLabel(option.id)}</span>
+                </button>
+              ))}
+            </div>
+
+            <p className="timer-readout" aria-label="Case timer">
+              {formatElapsedMs(elapsedMs)}
+            </p>
+          </>
+        ) : null}
       </section>
 
       <aside className={`stats-panel${isStatsOpen ? " is-open" : ""}`}>

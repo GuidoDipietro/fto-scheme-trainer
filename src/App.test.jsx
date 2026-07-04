@@ -1,4 +1,11 @@
-import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
+import {
+  act,
+  cleanup,
+  createEvent,
+  fireEvent,
+  render,
+  screen,
+} from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import App from "./App";
 import { generatePrompt } from "./lib/generatePrompt";
@@ -36,11 +43,16 @@ describe("App", () => {
     ...overrides,
   });
 
+  const startRun = () => {
+    fireEvent.keyDown(window, { key: "a" });
+  };
+
   it("starts with all center colors selected", () => {
     generatePrompt.mockReturnValue(buildPrompt("gray"));
     render(<App />);
 
-    expect(generatePrompt).toHaveBeenCalledWith(["gray", "orange", "green"]);
+    expect(generatePrompt).not.toHaveBeenCalled();
+    expect(screen.getByText(/press any key to start\./i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /gray center cases/i })).toHaveAttribute(
       "aria-pressed",
       "true",
@@ -60,6 +72,7 @@ describe("App", () => {
       .mockReturnValueOnce(buildPrompt("orange", "white", "green"));
 
     render(<App />);
+    startRun();
 
     fireEvent.click(screen.getByRole("button", { name: /blue/i }));
 
@@ -71,6 +84,7 @@ describe("App", () => {
     vi.useFakeTimers();
     generatePrompt.mockReturnValue(buildPrompt("gray"));
     render(<App />);
+    startRun();
 
     expect(screen.getByLabelText(/case timer/i)).toHaveTextContent("0.0s");
 
@@ -91,6 +105,7 @@ describe("App", () => {
 
     fireEvent.click(screen.getByRole("button", { name: /orange center cases/i }));
     fireEvent.click(screen.getByRole("button", { name: /green center cases/i }));
+    startRun();
 
     expect(generatePrompt).toHaveBeenLastCalledWith(["gray"]);
     expect(
@@ -116,6 +131,7 @@ describe("App", () => {
     fireEvent.click(screen.getByRole("button", { name: /orange center cases/i }));
     fireEvent.click(screen.getByRole("button", { name: /green center cases/i }));
     fireEvent.click(screen.getByRole("button", { name: /gray center cases/i }));
+    startRun();
 
     expect(generatePrompt).toHaveBeenLastCalledWith(["gray"]);
     expect(
@@ -128,6 +144,7 @@ describe("App", () => {
     generatePrompt.mockReturnValue(buildPrompt("gray", "blue", "red"));
 
     const { container } = render(<App />);
+    startRun();
 
     fireEvent.click(screen.getByRole("button", { name: /red/i }));
 
@@ -153,6 +170,7 @@ describe("App", () => {
       .mockReturnValueOnce(buildPrompt("orange", "white", "green"));
 
     render(<App />);
+    startRun();
 
     act(() => {
       vi.advanceTimersByTime(450);
@@ -183,6 +201,7 @@ describe("App", () => {
     generatePrompt.mockReturnValue(buildPrompt("gray", "blue", "red"));
 
     render(<App />);
+    startRun();
 
     fireEvent.click(screen.getByRole("button", { name: /red/i }));
 
@@ -318,6 +337,69 @@ describe("App", () => {
     expect(row.querySelector("text")).toBeNull();
   });
 
+  it("waits for any key to start a run and pauses again after 20 solved cases", () => {
+    generatePrompt.mockImplementation(() => buildPrompt("gray", "blue", "red"));
+    render(<App />);
+
+    expect(screen.queryByRole("button", { name: /blue/i })).not.toBeInTheDocument();
+
+    startRun();
+
+    expect(generatePrompt).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole("button", { name: /blue/i })).toBeInTheDocument();
+
+    for (let index = 0; index < 20; index += 1) {
+      fireEvent.click(screen.getByRole("button", { name: /blue/i }));
+    }
+
+    expect(screen.queryByRole("button", { name: /blue/i })).not.toBeInTheDocument();
+    expect(screen.getByText(/press any key to continue\./i)).toBeInTheDocument();
+  });
+
+  it("starts a run when the waiting screen is clicked", () => {
+    generatePrompt.mockReturnValue(buildPrompt("gray"));
+    render(<App />);
+
+    fireEvent.click(screen.getByRole("button", { name: /press any key to start\./i }));
+
+    expect(generatePrompt).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole("button", { name: /blue/i })).toBeInTheDocument();
+  });
+
+  it("prevents spacebar scrolling and allows space to start a run", () => {
+    generatePrompt.mockReturnValue(buildPrompt("gray"));
+    render(<App />);
+
+    const event = createEvent.keyDown(window, { key: " ", code: "Space" });
+    fireEvent(window, event);
+
+    expect(event.defaultPrevented).toBe(true);
+    expect(generatePrompt).toHaveBeenCalledTimes(1);
+  });
+
+  it("persists the training batch size locally", () => {
+    generatePrompt.mockImplementation(() => buildPrompt("gray", "blue", "red"));
+    render(<App />);
+
+    fireEvent.click(screen.getByRole("button", { name: /open settings/i }));
+    fireEvent.change(screen.getByRole("spinbutton"), { target: { value: "3" } });
+
+    expect(screen.getByText(/3-case set/i)).toBeInTheDocument();
+
+    cleanup();
+
+    render(<App />);
+
+    expect(screen.getByText(/3-case set/i)).toBeInTheDocument();
+
+    startRun();
+    fireEvent.click(screen.getByRole("button", { name: /blue/i }));
+    fireEvent.click(screen.getByRole("button", { name: /blue/i }));
+    fireEvent.click(screen.getByRole("button", { name: /blue/i }));
+
+    expect(screen.getByText(/press any key to continue\./i)).toBeInTheDocument();
+  });
+
   it("toggles sound mute state", () => {
     generatePrompt.mockReturnValue(buildPrompt("gray"));
     render(<App />);
@@ -340,6 +422,7 @@ describe("App", () => {
 
     render(<App />);
 
+    startRun();
     fireEvent.click(screen.getByRole("button", { name: /mute sounds/i }));
     fireEvent.click(screen.getByRole("button", { name: /blue/i }));
 

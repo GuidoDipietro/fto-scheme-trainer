@@ -1,22 +1,45 @@
 import { useState } from "react";
 import { FtoCenter } from "./components/FtoCenter";
 import { colorPalette, getColorLabel } from "./data/colors";
+import { centerSchemes } from "./data/centerSchemes";
 import { generatePrompt } from "./lib/generatePrompt";
 
+const selectableCenterIds = centerSchemes.map((center) => center.id);
+
 const createInitialState = () => ({
-  prompt: generatePrompt(),
+  selectedCenterIds: selectableCenterIds,
+  prompt: generatePrompt(selectableCenterIds),
   lastResult: null,
 });
 
 export default function App() {
   const [session, setSession] = useState(createInitialState);
 
+  const handleCenterToggle = (centerId) => {
+    setSession((current) => {
+      const isSelected = current.selectedCenterIds.includes(centerId);
+      const nextSelectedCenterIds =
+        isSelected && current.selectedCenterIds.length === 1
+          ? current.selectedCenterIds
+          : isSelected
+            ? current.selectedCenterIds.filter((id) => id !== centerId)
+            : [...current.selectedCenterIds, centerId];
+
+      return {
+        selectedCenterIds: nextSelectedCenterIds,
+        prompt: generatePrompt(nextSelectedCenterIds),
+        lastResult: null,
+      };
+    });
+  };
+
   const handleAnswer = (selectedColor) => {
     setSession((current) => {
       const isCorrect = selectedColor === current.prompt.correctAnswer;
 
       return {
-        prompt: generatePrompt(),
+        selectedCenterIds: current.selectedCenterIds,
+        prompt: generatePrompt(current.selectedCenterIds),
         lastResult: {
           isCorrect,
           selectedColor,
@@ -27,7 +50,7 @@ export default function App() {
     });
   };
 
-  const { prompt, lastResult } = session;
+  const { prompt, lastResult, selectedCenterIds } = session;
   const promptColors = prompt.answerOptions.map((colorId) => ({
     id: colorId,
     hex: colorPalette[colorId].hex,
@@ -36,12 +59,37 @@ export default function App() {
   return (
     <main className="app-shell">
       <section className="trainer-card">
-        <div className="center-stage">
-          <FtoCenter
-            mainColor={prompt.center.mainColor}
-            revealedSecondary={prompt.revealedSecondary}
-            targetPosition={prompt.targetPosition}
-          />
+        <div className="trainer-layout">
+          <div className="filter-row" aria-label="Center color filters">
+            {selectableCenterIds.map((centerId) => {
+              const centerColor = colorPalette[centerId];
+              const isSelected = selectedCenterIds.includes(centerId);
+
+              return (
+                <button
+                  key={centerId}
+                  type="button"
+                  className={`filter-button${isSelected ? " is-selected" : ""}`}
+                  onClick={() => handleCenterToggle(centerId)}
+                  aria-pressed={isSelected}
+                  aria-label={`Toggle ${getColorLabel(centerId)} center cases`}
+                  style={{
+                    "--filter-color": centerColor.hex,
+                  }}
+                >
+                  <span className="sr-only">{centerColor.label}</span>
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="center-stage">
+            <FtoCenter
+              mainColor={prompt.center.mainColor}
+              revealedSecondary={prompt.revealedSecondary}
+              targetPosition={prompt.targetPosition}
+            />
+          </div>
         </div>
 
         <div className="answer-row" aria-label="Answer choices">

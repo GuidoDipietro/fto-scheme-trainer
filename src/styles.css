@@ -55,6 +55,55 @@ select {
   gap: 1.25rem;
 }
 
+.trainer-layout {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 1rem;
+}
+
+.filter-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  align-items: center;
+}
+
+.filter-button {
+  width: 1.15rem;
+  height: 1.15rem;
+  padding: 0;
+  border-radius: 50%;
+  border: 1.5px solid rgba(15, 23, 42, 0.14);
+  background: color-mix(in srgb, var(--filter-color) 28%, white);
+  cursor: pointer;
+  transition:
+    transform 140ms ease,
+    box-shadow 140ms ease,
+    background-color 140ms ease,
+    border-color 140ms ease,
+    filter 140ms ease;
+  box-shadow: 0 4px 10px rgba(16, 33, 27, 0.1);
+}
+
+.filter-button.is-selected {
+  background: var(--filter-color);
+  border-color: rgba(15, 23, 42, 0.42);
+  box-shadow:
+    0 0 0 2px rgba(255, 255, 255, 0.95),
+    0 8px 16px rgba(16, 33, 27, 0.14);
+}
+
+.filter-button:hover {
+  transform: scale(1.08);
+  filter: brightness(1.03);
+}
+
+.filter-button:focus-visible {
+  outline: 3px solid rgba(245, 158, 11, 0.9);
+  outline-offset: 3px;
+}
+
 .center-stage {
   display: grid;
   place-items: center;
@@ -155,6 +204,16 @@ select {
 
   .answer-row {
     grid-template-columns: 1fr;
+  }
+
+  .trainer-layout {
+    grid-template-columns: 1fr;
+    gap: 0.9rem;
+  }
+
+  .filter-row {
+    flex-direction: row;
+    justify-content: center;
   }
 
   .center-stage {

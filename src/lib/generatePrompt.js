@@ -41,8 +41,17 @@ function shuffle(items) {
   return clone;
 }
 
-export function generatePrompt() {
-  const center = randomItem(centerSchemes);
+export function generatePrompt(selectedCenterIds) {
+  const availableCenters =
+    selectedCenterIds?.length > 0
+      ? centerSchemes.filter((center) => selectedCenterIds.includes(center.id))
+      : centerSchemes;
+
+  if (availableCenters.length === 0) {
+    throw new Error("generatePrompt requires at least one selectable center");
+  }
+
+  const center = randomItem(availableCenters);
   const revealedPosition = randomItem(trainerPositions);
   const targetPosition = randomItem(
     trainerPositions.filter((position) => position !== revealedPosition),

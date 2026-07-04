@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { centerSchemes } from "../data/centerSchemes";
-import { buildPrompt } from "./generatePrompt";
+import { buildPrompt, generatePrompt } from "./generatePrompt";
 
 describe("buildPrompt", () => {
   it("uses the target position secondary color as the correct answer", () => {
@@ -29,5 +29,15 @@ describe("buildPrompt", () => {
     expect(() => buildPrompt(center, "topRight", "topRight")).toThrow(
       /must differ/i,
     );
+  });
+
+  it("limits prompt generation to the selected centers", () => {
+    for (let index = 0; index < 25; index += 1) {
+      expect(generatePrompt(["green", "gray"]).center.id).toMatch(/green|gray/);
+    }
+  });
+
+  it("throws when no selected centers are available", () => {
+    expect(() => generatePrompt(["pink"])).toThrow(/at least one selectable center/i);
   });
 });

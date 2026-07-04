@@ -1,6 +1,11 @@
 import { describe, expect, it, vi } from "vitest";
 import { centerSchemes } from "../data/centerSchemes";
-import { buildPrompt, generatePrompt, rotateCenter } from "./generatePrompt";
+import {
+  buildCaseKey,
+  buildPrompt,
+  generatePrompt,
+  rotateCenter,
+} from "./generatePrompt";
 
 describe("buildPrompt", () => {
   it("uses the target position secondary color as the correct answer", () => {
@@ -28,6 +33,14 @@ describe("buildPrompt", () => {
 
     expect(() => buildPrompt(center, "topRight", "topRight")).toThrow(
       /must differ/i,
+    );
+  });
+
+  it("builds a stable case key from center, shown color, target, and offset", () => {
+    const center = rotateCenter(centerSchemes[1], 2);
+
+    expect(buildCaseKey(center, "blue", "topLeft")).toBe(
+      "orange:blue:topLeft:2",
     );
   });
 
@@ -72,6 +85,7 @@ describe("buildPrompt", () => {
       topLeft: "yellow",
       bottom: "purple",
     });
+    expect(prompt.caseKey).toBe("orange:blue:topLeft:2");
 
     vi.restoreAllMocks();
   });

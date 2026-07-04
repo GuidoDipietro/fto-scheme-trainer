@@ -24,6 +24,17 @@ export function rotateCenter(center, rotationOffset) {
   };
 }
 
+export function buildCaseKey(center, revealedSecondaryColor, targetPosition) {
+  const rotationOffset = center.rotationOffset ?? 0;
+
+  return [
+    center.mainColor,
+    revealedSecondaryColor,
+    targetPosition,
+    rotationOffset,
+  ].join(":");
+}
+
 export function buildPrompt(center, revealedPosition, targetPosition) {
   if (revealedPosition === targetPosition) {
     throw new Error("revealedPosition and targetPosition must differ");
@@ -32,6 +43,8 @@ export function buildPrompt(center, revealedPosition, targetPosition) {
   const positions = trainerPositions.filter(
     (position) => position !== revealedPosition,
   );
+  const revealedSecondaryColor =
+    center.secondaryColorsByPosition[revealedPosition];
   const correctAnswer = center.secondaryColorsByPosition[targetPosition];
   const distractor = positions
     .filter((position) => position !== targetPosition)
@@ -41,11 +54,12 @@ export function buildPrompt(center, revealedPosition, targetPosition) {
     center,
     revealedSecondary: {
       position: revealedPosition,
-      color: center.secondaryColorsByPosition[revealedPosition],
+      color: revealedSecondaryColor,
     },
     targetPosition,
     correctAnswer,
     distractor,
+    caseKey: buildCaseKey(center, revealedSecondaryColor, targetPosition),
     answerOptions: shuffle([correctAnswer, distractor]),
   };
 }

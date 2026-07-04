@@ -2,22 +2,197 @@ import { useEffect, useRef, useState } from "react";
 import { FtoCenter } from "./components/FtoCenter";
 import { colorPalette, getColorLabel } from "./data/colors";
 import { centerSchemes } from "./data/centerSchemes";
-import { generatePrompt } from "./lib/generatePrompt";
+import { generatePrompt, rotateCenter } from "./lib/generatePrompt";
 
 const selectableCenterIds = centerSchemes.map((center) => center.id);
 const wrongFlashDurationMs = 220;
+const timerTickMs = 100;
+const caseStatsStorageKey = "fto-scheme-trainer-case-stats";
+
+const defaultStatsSort = {
+  metric: "averageTime",
+  direction: "desc",
+};
+
+function getNow() {
+  return Date.now();
+}
+
+function getStoredCaseStats() {
+  if (typeof window === "undefined") {
+    return {};
+  }
+
+  try {
+    const rawStats = window.localStorage.getItem(caseStatsStorageKey);
+
+    return rawStats ? JSON.parse(rawStats) : {};
+  } catch {
+    return {};
+  }
+}
+
+function storeCaseStats(caseStats) {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  window.localStorage.setItem(caseStatsStorageKey, JSON.stringify(caseStats));
+}
+
+function clearStoredCaseStats() {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  window.localStorage.removeItem(caseStatsStorageKey);
+}
+
+function formatElapsedMs(elapsedMs) {
+  return `${(elapsedMs / 1000).toFixed(1)}s`;
+}
+
+function formatAverageTime(elapsedMs) {
+  if (elapsedMs == null) {
+    return "—";
+  }
+
+  return formatElapsedMs(elapsedMs);
+}
+
+function parseCaseKey(caseKey) {
+  const [mainColor, revealedColor, targetPosition, offsetRaw] = caseKey.split(":");
+
+  return {
+    mainColor,
+    revealedColor,
+    targetPosition,
+    rotationOffset: Number(offsetRaw),
+  };
+}
+
+function getRevealedPosition(mainColor, revealedColor, rotationOffset) {
+  const center = centerSchemes.find((scheme) => scheme.mainColor === mainColor);
+
+  if (!center) {
+    return "topRight";
+  }
+
+  const rotatedCenter = rotateCenter(center, rotationOffset);
+
+  return (
+    Object.entries(rotatedCenter.secondaryColorsByPosition).find(
+      ([, color]) => color === revealedColor,
+    )?.[0] ?? "topRight"
+  );
+}
+
+function getAccuracy(caseStats) {
+  const totalAttempts = caseStats.correctCount + caseStats.incorrectCount;
+
+  return totalAttempts > 0 ? caseStats.correctCount / totalAttempts : 0;
+}
+
+function buildStatsRows(caseStats) {
+  return Object.entries(caseStats)
+    .filter(([, stats]) => (stats.correctCount ?? 0) > 0)
+    .map(([caseKey, stats]) => {
+    const { mainColor, revealedColor, targetPosition, rotationOffset } =
+      parseCaseKey(caseKey);
+    const correctCount = stats.correctCount ?? 0;
+    const incorrectCount = stats.incorrectCount ?? 0;
+    const totalAttempts = correctCount + incorrectCount;
+    const center = centerSchemes.find((scheme) => scheme.mainColor === mainColor);
+    const rotatedCenter = center ? rotateCenter(center, rotationOffset) : null;
+
+    return {
+      caseKey,
+      mainColor,
+      revealedColor,
+      targetPosition,
+      rotationOffset,
+      revealedPosition: getRevealedPosition(
+        mainColor,
+        revealedColor,
+        rotationOffset,
+      ),
+      targetSecondaryColor:
+        rotatedCenter?.secondaryColorsByPosition[targetPosition] ?? null,
+      averageTimeMs:
+        correctCount > 0 ? stats.totalSolveTimeMs / correctCount : null,
+      accuracy: getAccuracy(stats),
+      totalAttempts,
+    };
+    });
+}
+
+function getDefaultSortDirection(metric) {
+  return metric === "averageTime" ? "desc" : "asc";
+}
+
+function sortStatsRows(rows, statsSort) {
+  const directionFactor = statsSort.direction === "asc" ? 1 : -1;
+
+  return [...rows].sort((leftRow, rightRow) => {
+    let comparison = 0;
+
+    if (statsSort.metric === "averageTime") {
+      const leftValue =
+        leftRow.averageTimeMs ?? (
+          statsSort.direction === "desc"
+            ? Number.POSITIVE_INFINITY
+            : Number.NEGATIVE_INFINITY
+        );
+      const rightValue =
+        rightRow.averageTimeMs ?? (
+          statsSort.direction === "desc"
+            ? Number.POSITIVE_INFINITY
+            : Number.NEGATIVE_INFINITY
+        );
+
+      comparison = leftValue - rightValue;
+    } else {
+      comparison = leftRow.accuracy - rightRow.accuracy;
+    }
+
+    if (comparison !== 0) {
+      return comparison * directionFactor;
+    }
+
+    return leftRow.caseKey.localeCompare(rightRow.caseKey);
+  });
+}
 
 const createInitialState = () => ({
   selectedCenterIds: selectableCenterIds,
   prompt: generatePrompt(selectableCenterIds),
   isWrongGuessActive: false,
   isSoundMuted: false,
+  promptStartedAtMs: getNow(),
+  elapsedMs: 0,
 });
 
 export default function App() {
   const [session, setSession] = useState(createInitialState);
+  const [caseStats, setCaseStats] = useState(getStoredCaseStats);
+  const [isStatsOpen, setIsStatsOpen] = useState(true);
+  const [statsSort, setStatsSort] = useState(defaultStatsSort);
+  const [revealedStatsCases, setRevealedStatsCases] = useState({});
   const wrongFlashTimeoutRef = useRef(null);
   const audioContextRef = useRef(null);
+
+  useEffect(() => {
+    const intervalId = window.setInterval(() => {
+      setSession((current) => ({
+        ...current,
+        elapsedMs: getNow() - current.promptStartedAtMs,
+      }));
+    }, timerTickMs);
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, []);
 
   useEffect(
     () => () => {
@@ -141,6 +316,38 @@ export default function App() {
     }, wrongFlashDurationMs);
   };
 
+  const recordCaseResult = ({ caseKey, isCorrect, elapsedMs = 0 }) => {
+    setCaseStats((currentCaseStats) => {
+      const existingCaseStats = currentCaseStats[caseKey] ?? {
+        correctCount: 0,
+        incorrectCount: 0,
+        totalSolveTimeMs: 0,
+        lastSolveTimeMs: 0,
+      };
+
+      const nextCaseStats = isCorrect
+        ? {
+            ...existingCaseStats,
+            correctCount: existingCaseStats.correctCount + 1,
+            totalSolveTimeMs: existingCaseStats.totalSolveTimeMs + elapsedMs,
+            lastSolveTimeMs: elapsedMs,
+          }
+        : {
+            ...existingCaseStats,
+            incorrectCount: existingCaseStats.incorrectCount + 1,
+          };
+
+      const nextStatsByCase = {
+        ...currentCaseStats,
+        [caseKey]: nextCaseStats,
+      };
+
+      storeCaseStats(nextStatsByCase);
+
+      return nextStatsByCase;
+    });
+  };
+
   const handleCenterToggle = (centerId) => {
     setSession((current) => {
       const isSelected = current.selectedCenterIds.includes(centerId);
@@ -156,6 +363,8 @@ export default function App() {
         prompt: generatePrompt(nextSelectedCenterIds),
         isWrongGuessActive: false,
         isSoundMuted: current.isSoundMuted,
+        promptStartedAtMs: getNow(),
+        elapsedMs: 0,
       };
     });
   };
@@ -167,15 +376,54 @@ export default function App() {
     }));
   };
 
+  const handleStatsSort = (metric) => {
+    setStatsSort((currentSort) => {
+      if (currentSort.metric === metric) {
+        return {
+          ...currentSort,
+          direction: currentSort.direction === "asc" ? "desc" : "asc",
+        };
+      }
+
+      return {
+        metric,
+        direction: getDefaultSortDirection(metric),
+      };
+    });
+  };
+
+  const handleResetStats = () => {
+    clearStoredCaseStats();
+    setCaseStats({});
+    setRevealedStatsCases({});
+  };
+
+  const handleStatsCaseToggle = (caseKey) => {
+    setRevealedStatsCases((current) => ({
+      ...current,
+      [caseKey]: !current[caseKey],
+    }));
+  };
+
   const handleAnswer = (selectedColor) => {
     const isCorrect = selectedColor === session.prompt.correctAnswer;
+    const elapsedMs = getNow() - session.promptStartedAtMs;
 
     if (!isCorrect) {
+      recordCaseResult({
+        caseKey: session.prompt.caseKey,
+        isCorrect: false,
+      });
       playWrongSound();
       triggerWrongFlash();
       return;
     }
 
+    recordCaseResult({
+      caseKey: session.prompt.caseKey,
+      isCorrect: true,
+      elapsedMs,
+    });
     playSuccessSound();
 
     setSession((current) => ({
@@ -183,14 +431,23 @@ export default function App() {
       prompt: generatePrompt(current.selectedCenterIds),
       isWrongGuessActive: false,
       isSoundMuted: current.isSoundMuted,
+      promptStartedAtMs: getNow(),
+      elapsedMs: 0,
     }));
   };
 
-  const { prompt, selectedCenterIds, isWrongGuessActive, isSoundMuted } = session;
+  const {
+    prompt,
+    selectedCenterIds,
+    isWrongGuessActive,
+    isSoundMuted,
+    elapsedMs,
+  } = session;
   const promptColors = prompt.answerOptions.map((colorId) => ({
     id: colorId,
     hex: colorPalette[colorId].hex,
   }));
+  const statsRows = sortStatsRows(buildStatsRows(caseStats), statsSort);
 
   return (
     <main className="app-shell">
@@ -292,7 +549,100 @@ export default function App() {
             </button>
           ))}
         </div>
+
+        <p className="timer-readout" aria-label="Case timer">
+          {formatElapsedMs(elapsedMs)}
+        </p>
       </section>
+
+      <aside className={`stats-panel${isStatsOpen ? " is-open" : ""}`}>
+        <button
+          type="button"
+          className="stats-panel-toggle"
+          onClick={() => setIsStatsOpen((current) => !current)}
+          aria-expanded={isStatsOpen}
+        >
+          Case Stats
+        </button>
+
+        {isStatsOpen ? (
+          <div className="stats-panel-body">
+            <button
+              type="button"
+              className="stats-reset-button"
+              onClick={handleResetStats}
+            >
+              Reset Stats
+            </button>
+
+            {statsRows.length > 0 ? (
+              <table className="stats-table">
+                <thead>
+                  <tr>
+                    <th scope="col">Case</th>
+                    <th scope="col">
+                      <button
+                        type="button"
+                        className="stats-sort-button"
+                        onClick={() => handleStatsSort("averageTime")}
+                      >
+                        Average
+                      </button>
+                    </th>
+                    <th scope="col">
+                      <button
+                        type="button"
+                        className="stats-sort-button"
+                        onClick={() => handleStatsSort("accuracy")}
+                      >
+                        Accuracy
+                      </button>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {statsRows.map((row) => (
+                    <tr key={row.caseKey} data-case-key={row.caseKey}>
+                      <td className="stats-case-cell">
+                        <div className="stats-case-icon">
+                          <button
+                            type="button"
+                            className="stats-case-button"
+                            onClick={() => handleStatsCaseToggle(row.caseKey)}
+                            aria-label={
+                              revealedStatsCases[row.caseKey]
+                                ? "Hide correct answer"
+                                : "Show correct answer"
+                            }
+                          >
+                            <FtoCenter
+                              mainColor={row.mainColor}
+                              revealedSecondary={{
+                                position: row.revealedPosition,
+                                color: row.revealedColor,
+                              }}
+                              targetPosition={row.targetPosition}
+                              targetSecondaryColor={
+                                revealedStatsCases[row.caseKey]
+                                  ? row.targetSecondaryColor
+                                  : null
+                              }
+                            />
+                          </button>
+                        </div>
+                      </td>
+                      <td>{formatAverageTime(row.averageTimeMs)}</td>
+                      <td>{Math.round(row.accuracy * 100)}%</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            ) : (
+              <p className="stats-empty">No case stats yet.</p>
+            )}
+          </div>
+        ) : null}
+      </aside>
     </main>
   );
 }

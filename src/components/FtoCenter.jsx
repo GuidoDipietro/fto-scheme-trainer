@@ -64,6 +64,7 @@ export function FtoCenter({
   mainColor,
   revealedSecondary,
   targetPosition,
+  targetSecondaryColor = null,
 }) {
   const mainFill = getColorHex(mainColor);
   const activeTriangles = getActiveCenterTriangles(
@@ -95,7 +96,12 @@ export function FtoCenter({
 
       {Object.entries(positionPolygons).map(([position, polygon]) => {
         const isRevealed = position === revealedSecondary.position;
-        const wedgeFill = isRevealed ? getColorHex(revealedSecondary.color) : "transparent";
+        const isTarget = position === targetPosition;
+        const wedgeFill = isRevealed
+          ? getColorHex(revealedSecondary.color)
+          : isTarget && targetSecondaryColor
+            ? getColorHex(targetSecondaryColor)
+            : "transparent";
 
         return (
           <g key={`${position}-fill`} data-position={position}>
@@ -170,7 +176,7 @@ export function FtoCenter({
               </>
             )}
 
-            {isTarget ? (
+            {isTarget && !targetSecondaryColor ? (
               <text
                 x={labelPoint.x}
                 y={labelPoint.y}

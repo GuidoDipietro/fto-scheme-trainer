@@ -272,6 +272,10 @@ export default function App() {
         return;
       }
 
+      if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
+        return;
+      }
+
       startRun();
     };
 
@@ -281,6 +285,35 @@ export default function App() {
       window.removeEventListener("keydown", handleKeyDown);
     };
   }, [session.isAwaitingRunStart]);
+
+  useEffect(() => {
+    if (session.isAwaitingRunStart || !session.prompt) {
+      return undefined;
+    }
+
+    const handleKeyDown = (event) => {
+      if (
+        event.target instanceof HTMLElement &&
+        ["INPUT", "TEXTAREA", "SELECT"].includes(event.target.tagName)
+      ) {
+        return;
+      }
+
+      if (event.key === "ArrowLeft") {
+        handleAnswer(session.prompt.answerOptions[0]);
+      }
+
+      if (event.key === "ArrowRight") {
+        handleAnswer(session.prompt.answerOptions[1]);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [session.isAwaitingRunStart, session.prompt]);
 
   useEffect(
     () => () => {

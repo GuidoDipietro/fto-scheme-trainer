@@ -80,6 +80,35 @@ describe("App", () => {
     expect(screen.getByRole("button", { name: /white/i })).toBeInTheDocument();
   });
 
+  it("lets ArrowLeft choose the left answer", () => {
+    generatePrompt
+      .mockReturnValueOnce(buildPrompt("gray", "blue", "red"))
+      .mockReturnValueOnce(buildPrompt("orange", "white", "green"));
+
+    render(<App />);
+    startRun();
+
+    fireEvent.keyDown(window, { key: "ArrowLeft" });
+
+    expect(generatePrompt).toHaveBeenLastCalledWith(["gray", "orange", "green"]);
+    expect(screen.getByRole("button", { name: /white/i })).toBeInTheDocument();
+  });
+
+  it("lets ArrowRight choose the right answer", () => {
+    vi.useFakeTimers();
+    generatePrompt.mockReturnValue(buildPrompt("gray", "red", "blue"));
+
+    const { container } = render(<App />);
+    startRun();
+
+    fireEvent.keyDown(window, { key: "ArrowRight" });
+
+    expect(generatePrompt).toHaveBeenCalledTimes(1);
+    expect(container.querySelector(".trainer-card")).toHaveClass(
+      "is-wrong-guess",
+    );
+  });
+
   it("shows a live timer for the current case", () => {
     vi.useFakeTimers();
     generatePrompt.mockReturnValue(buildPrompt("gray"));
@@ -364,6 +393,17 @@ describe("App", () => {
 
     expect(generatePrompt).toHaveBeenCalledTimes(1);
     expect(screen.getByRole("button", { name: /blue/i })).toBeInTheDocument();
+  });
+
+  it("does not start a run from the waiting screen with left or right arrow keys", () => {
+    generatePrompt.mockReturnValue(buildPrompt("gray"));
+    render(<App />);
+
+    fireEvent.keyDown(window, { key: "ArrowLeft" });
+    fireEvent.keyDown(window, { key: "ArrowRight" });
+
+    expect(generatePrompt).not.toHaveBeenCalled();
+    expect(screen.getByText(/press any key to start\./i)).toBeInTheDocument();
   });
 
   it("prevents spacebar scrolling and allows space to start a run", () => {

@@ -114,6 +114,24 @@ select {
   outline-offset: 3px;
 }
 
+.stats-summary {
+  display: grid;
+  gap: 0.25rem;
+  margin-bottom: 0.7rem;
+  padding: 0.65rem 0.75rem;
+  border-radius: 14px;
+  background: rgba(248, 250, 252, 0.9);
+  border: 1px solid rgba(148, 163, 184, 0.14);
+}
+
+.stats-summary-item {
+  margin: 0;
+  color: #355047;
+  font-size: 0.82rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
 .stats-table {
   width: 100%;
   border-collapse: collapse;

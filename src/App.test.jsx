@@ -274,6 +274,36 @@ describe("App", () => {
     expect(caseRows[1]).toHaveAttribute("data-case-key", "orange:purple:bottom:1");
   });
 
+  it("shows the mean average time and mean accuracy above the stats table", () => {
+    window.localStorage.setItem(
+      "fto-scheme-trainer-case-stats",
+      JSON.stringify({
+        "gray:yellow:topLeft:0": {
+          correctCount: 2,
+          incorrectCount: 2,
+          totalSolveTimeMs: 8000,
+          lastSolveTimeMs: 3000,
+        },
+        "orange:purple:bottom:1": {
+          correctCount: 2,
+          incorrectCount: 0,
+          totalSolveTimeMs: 2000,
+          lastSolveTimeMs: 1000,
+        },
+      }),
+    );
+    generatePrompt.mockReturnValue(buildPrompt("gray"));
+
+    render(<App />);
+
+    expect(screen.getByLabelText(/average average time/i)).toHaveTextContent(
+      "Avg Avg: 2.5s",
+    );
+    expect(screen.getByLabelText(/average accuracy/i)).toHaveTextContent(
+      "Avg Acc: 75%",
+    );
+  });
+
   it("toggles stats sorting when a metric header is clicked", () => {
     window.localStorage.setItem(
       "fto-scheme-trainer-case-stats",

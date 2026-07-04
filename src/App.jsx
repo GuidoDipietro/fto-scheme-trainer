@@ -194,6 +194,25 @@ function sortStatsRows(rows, statsSort) {
   });
 }
 
+function buildStatsSummary(rows) {
+  if (rows.length === 0) {
+    return {
+      averageOfAveragesMs: null,
+      averageAccuracy: null,
+    };
+  }
+
+  const averageOfAveragesMs =
+    rows.reduce((total, row) => total + (row.averageTimeMs ?? 0), 0) / rows.length;
+  const averageAccuracy =
+    rows.reduce((total, row) => total + row.accuracy, 0) / rows.length;
+
+  return {
+    averageOfAveragesMs,
+    averageAccuracy,
+  };
+}
+
 const createInitialState = (guessesPerRun) => ({
   selectedCenterIds: selectableCenterIds,
   prompt: null,
@@ -611,6 +630,7 @@ export default function App() {
     hex: colorPalette[colorId].hex,
   })) ?? [];
   const statsRows = sortStatsRows(buildStatsRows(caseStats), statsSort);
+  const statsSummary = buildStatsSummary(statsRows);
 
   return (
     <main className="app-shell">
@@ -806,67 +826,78 @@ export default function App() {
             </button>
 
             {statsRows.length > 0 ? (
-              <table className="stats-table">
-                <thead>
-                  <tr>
-                    <th scope="col">Case</th>
-                    <th scope="col">
-                      <button
-                        type="button"
-                        className="stats-sort-button"
-                        onClick={() => handleStatsSort("averageTime")}
-                      >
-                        Average
-                      </button>
-                    </th>
-                    <th scope="col">
-                      <button
-                        type="button"
-                        className="stats-sort-button"
-                        onClick={() => handleStatsSort("accuracy")}
-                      >
-                        Accuracy
-                      </button>
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {statsRows.map((row) => (
-                    <tr key={row.caseKey} data-case-key={row.caseKey}>
-                      <td className="stats-case-cell">
-                        <div className="stats-case-icon">
-                          <button
-                            type="button"
-                            className="stats-case-button"
-                            onClick={() => handleStatsCaseToggle(row.caseKey)}
-                            aria-label={
-                              revealedStatsCases[row.caseKey]
-                                ? "Hide correct answer"
-                                : "Show correct answer"
-                            }
-                          >
-                            <FtoCenter
-                              mainColor={row.mainColor}
-                              revealedSecondary={{
-                                position: row.revealedPosition,
-                                color: row.revealedColor,
-                              }}
-                              targetPosition={row.targetPosition}
-                              targetSecondaryColor={
-                                revealedStatsCases[row.caseKey]
-                                  ? row.targetSecondaryColor
-                                  : null
-                              }
-                            />
-                          </button>
-                        </div>
-                      </td>
-                      <td>{formatAverageTime(row.averageTimeMs)}</td>
-                      <td>{Math.round(row.accuracy * 100)}%</td>
+              <>
+                <div className="stats-summary">
+                  <p className="stats-summary-item" aria-label="Average average time">
+                    Avg Avg: {formatAverageTime(statsSummary.averageOfAveragesMs)}
+                  </p>
+                  <p className="stats-summary-item" aria-label="Average accuracy">
+                    Avg Acc: {Math.round((statsSummary.averageAccuracy ?? 0) * 100)}%
+                  </p>
+                </div>
+
+                <table className="stats-table">
+                  <thead>
+                    <tr>
+                      <th scope="col">Case</th>
+                      <th scope="col">
+                        <button
+                          type="button"
+                          className="stats-sort-button"
+                          onClick={() => handleStatsSort("averageTime")}
+                        >
+                          Average
+                        </button>
+                      </th>
+                      <th scope="col">
+                        <button
+                          type="button"
+                          className="stats-sort-button"
+                          onClick={() => handleStatsSort("accuracy")}
+                        >
+                          Accuracy
+                        </button>
+                      </th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {statsRows.map((row) => (
+                      <tr key={row.caseKey} data-case-key={row.caseKey}>
+                        <td className="stats-case-cell">
+                          <div className="stats-case-icon">
+                            <button
+                              type="button"
+                              className="stats-case-button"
+                              onClick={() => handleStatsCaseToggle(row.caseKey)}
+                              aria-label={
+                                revealedStatsCases[row.caseKey]
+                                  ? "Hide correct answer"
+                                  : "Show correct answer"
+                              }
+                            >
+                              <FtoCenter
+                                mainColor={row.mainColor}
+                                revealedSecondary={{
+                                  position: row.revealedPosition,
+                                  color: row.revealedColor,
+                                }}
+                                targetPosition={row.targetPosition}
+                                targetSecondaryColor={
+                                  revealedStatsCases[row.caseKey]
+                                    ? row.targetSecondaryColor
+                                    : null
+                                }
+                              />
+                            </button>
+                          </div>
+                        </td>
+                        <td>{formatAverageTime(row.averageTimeMs)}</td>
+                        <td>{Math.round(row.accuracy * 100)}%</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </>
             ) : (
               <p className="stats-empty">No case stats yet.</p>
             )}

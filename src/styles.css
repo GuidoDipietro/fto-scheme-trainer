@@ -46,6 +46,10 @@ select {
   border: 1px solid rgba(255, 255, 255, 0.8);
   border-radius: 28px;
   box-shadow: 0 18px 60px rgba(16, 33, 27, 0.12);
+  transition:
+    background-color 180ms ease,
+    border-color 180ms ease,
+    box-shadow 180ms ease;
 }
 
 .trainer-card {
@@ -53,6 +57,12 @@ select {
   padding: 1.5rem;
   display: grid;
   gap: 1.25rem;
+}
+
+.trainer-card.is-wrong-guess {
+  background: rgba(254, 205, 211, 0.98);
+  border-color: rgba(239, 68, 68, 0.72);
+  box-shadow: 0 18px 60px rgba(185, 28, 28, 0.26);
 }
 
 .trainer-layout {
@@ -67,6 +77,47 @@ select {
   flex-direction: column;
   gap: 0.6rem;
   align-items: center;
+}
+
+.sound-toggle {
+  margin-top: 0.15rem;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  border: 1px solid rgba(15, 23, 42, 0.14);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.88);
+  color: #355047;
+  cursor: pointer;
+  transition:
+    transform 140ms ease,
+    background-color 140ms ease,
+    border-color 140ms ease,
+    color 140ms ease,
+    box-shadow 140ms ease;
+  box-shadow: 0 4px 10px rgba(16, 33, 27, 0.08);
+}
+
+.sound-toggle-icon {
+  width: 1rem;
+  height: 1rem;
+  display: block;
+  margin: 0 auto;
+}
+
+.sound-toggle.is-muted {
+  background: rgba(226, 232, 240, 0.96);
+  border-color: rgba(100, 116, 139, 0.26);
+  color: #64748b;
+}
+
+.sound-toggle:hover {
+  transform: translateY(-1px);
+}
+
+.sound-toggle:focus-visible {
+  outline: 3px solid rgba(245, 158, 11, 0.9);
+  outline-offset: 3px;
 }
 
 .filter-button {
@@ -170,28 +221,6 @@ select {
   border: 0;
 }
 
-.status-row {
-  display: flex;
-  justify-content: center;
-  min-height: 2rem;
-  color: #355047;
-  text-align: center;
-}
-
-.status-row p {
-  margin: 0;
-  font-size: 1rem;
-  font-weight: 600;
-}
-
-.status-ok {
-  color: #166534;
-}
-
-.status-bad {
-  color: #991b1b;
-}
-
 @media (max-width: 720px) {
   .app-shell {
     padding: 1rem 0 2rem;
@@ -214,6 +243,7 @@ select {
   .filter-row {
     flex-direction: row;
     justify-content: center;
+    flex-wrap: wrap;
   }
 
   .center-stage {

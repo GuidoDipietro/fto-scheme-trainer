@@ -149,6 +149,32 @@ describe("App", () => {
     );
   });
 
+  it("persists selected center filters locally", () => {
+    generatePrompt.mockImplementation(
+      (selectedCenterIds = ["gray", "orange", "green"]) =>
+        buildPrompt(selectedCenterIds[0]),
+    );
+
+    render(<App />);
+
+    fireEvent.click(screen.getByRole("button", { name: /orange center cases/i }));
+    fireEvent.click(screen.getByRole("button", { name: /green center cases/i }));
+
+    cleanup();
+
+    render(<App />);
+
+    expect(
+      screen.getByRole("button", { name: /gray center cases/i }),
+    ).toHaveAttribute("aria-pressed", "true");
+    expect(
+      screen.getByRole("button", { name: /orange center cases/i }),
+    ).toHaveAttribute("aria-pressed", "false");
+    expect(
+      screen.getByRole("button", { name: /green center cases/i }),
+    ).toHaveAttribute("aria-pressed", "false");
+  });
+
   it("keeps one center selected when toggling the last active filter", () => {
     generatePrompt.mockImplementation(
       (selectedCenterIds = ["gray", "orange", "green"]) =>

@@ -52,22 +52,35 @@ function clearStoredCaseStats() {
 
 function getStoredSettings() {
   if (typeof window === "undefined") {
-    return { guessesPerRun: defaultGuessesPerRun };
+    return {
+      guessesPerRun: defaultGuessesPerRun,
+      selectedCenterIds: selectableCenterIds,
+    };
   }
 
   try {
     const rawSettings = window.localStorage.getItem(settingsStorageKey);
     const parsedSettings = rawSettings ? JSON.parse(rawSettings) : {};
     const guessesPerRun = Number(parsedSettings.guessesPerRun);
+    const selectedCenterIds = Array.isArray(parsedSettings.selectedCenterIds)
+      ? selectableCenterIds.filter((centerId) =>
+          parsedSettings.selectedCenterIds.includes(centerId),
+        )
+      : selectableCenterIds;
 
     return {
       guessesPerRun:
         Number.isInteger(guessesPerRun) && guessesPerRun > 0
           ? guessesPerRun
           : defaultGuessesPerRun,
+      selectedCenterIds:
+        selectedCenterIds.length > 0 ? selectedCenterIds : selectableCenterIds,
     };
   } catch {
-    return { guessesPerRun: defaultGuessesPerRun };
+    return {
+      guessesPerRun: defaultGuessesPerRun,
+      selectedCenterIds: selectableCenterIds,
+    };
   }
 }
 
@@ -161,6 +174,20 @@ function getDefaultSortDirection(metric) {
   return metric === "averageTime" ? "desc" : "asc";
 }
 
+function getNextSelectedCenterIds(currentSelectedCenterIds, centerId) {
+  const isSelected = currentSelectedCenterIds.includes(centerId);
+
+  if (isSelected && currentSelectedCenterIds.length === 1) {
+    return currentSelectedCenterIds;
+  }
+
+  if (isSelected) {
+    return currentSelectedCenterIds.filter((id) => id !== centerId);
+  }
+
+  return [...currentSelectedCenterIds, centerId];
+}
+
 function sortStatsRows(rows, statsSort) {
   const directionFactor = statsSort.direction === "asc" ? 1 : -1;
 
@@ -213,12 +240,12 @@ function buildStatsSummary(rows) {
   };
 }
 
-const createInitialState = (guessesPerRun) => ({
-  selectedCenterIds: selectableCenterIds,
+const createInitialState = (settings) => ({
+  selectedCenterIds: settings.selectedCenterIds,
   prompt: null,
   isAwaitingRunStart: true,
   completedRunCount: 0,
-  casesRemainingInRun: guessesPerRun,
+  casesRemainingInRun: settings.guessesPerRun,
   isWrongGuessActive: false,
   isSoundMuted: false,
   promptStartedAtMs: null,
@@ -228,7 +255,7 @@ const createInitialState = (guessesPerRun) => ({
 export default function App() {
   const [settings, setSettings] = useState(getStoredSettings);
   const [session, setSession] = useState(() =>
-    createInitialState(getStoredSettings().guessesPerRun),
+    createInitialState(getStoredSettings()),
   );
   const [caseStats, setCaseStats] = useState(getStoredCaseStats);
   const [isStatsOpen, setIsStatsOpen] = useState(true);
@@ -490,13 +517,10 @@ export default function App() {
 
   const handleCenterToggle = (centerId) => {
     setSession((current) => {
-      const isSelected = current.selectedCenterIds.includes(centerId);
-      const nextSelectedCenterIds =
-        isSelected && current.selectedCenterIds.length === 1
-          ? current.selectedCenterIds
-          : isSelected
-            ? current.selectedCenterIds.filter((id) => id !== centerId)
-            : [...current.selectedCenterIds, centerId];
+      const nextSelectedCenterIds = getNextSelectedCenterIds(
+        current.selectedCenterIds,
+        centerId,
+      );
 
       return {
         selectedCenterIds: nextSelectedCenterIds,
@@ -511,6 +535,20 @@ export default function App() {
         promptStartedAtMs: current.isAwaitingRunStart ? null : getNow(),
         elapsedMs: 0,
       };
+    });
+    setSettings((currentSettings) => {
+      const nextSelectedCenterIds = getNextSelectedCenterIds(
+        currentSettings.selectedCenterIds,
+        centerId,
+      );
+      const nextSettings = {
+        ...currentSettings,
+        selectedCenterIds: nextSelectedCenterIds,
+      };
+
+      storeSettings(nextSettings);
+
+      return nextSettings;
     });
   };
 

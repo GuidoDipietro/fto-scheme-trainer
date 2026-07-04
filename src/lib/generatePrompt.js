@@ -4,6 +4,26 @@ function randomItem(items) {
   return items[Math.floor(Math.random() * items.length)];
 }
 
+export function rotateCenter(center, rotationOffset) {
+  const normalizedOffset = rotationOffset % trainerPositions.length;
+  const rotatedSecondaryColorsByPosition = Object.fromEntries(
+    trainerPositions.map((position, index) => {
+      const sourcePosition =
+        trainerPositions[
+          (index + normalizedOffset) % trainerPositions.length
+        ];
+
+      return [position, center.secondaryColorsByPosition[sourcePosition]];
+    }),
+  );
+
+  return {
+    ...center,
+    rotationOffset: normalizedOffset,
+    secondaryColorsByPosition: rotatedSecondaryColorsByPosition,
+  };
+}
+
 export function buildPrompt(center, revealedPosition, targetPosition) {
   if (revealedPosition === targetPosition) {
     throw new Error("revealedPosition and targetPosition must differ");
@@ -52,10 +72,15 @@ export function generatePrompt(selectedCenterIds) {
   }
 
   const center = randomItem(availableCenters);
+  const rotationOffset = randomItem([0, 1, 2]);
   const revealedPosition = randomItem(trainerPositions);
   const targetPosition = randomItem(
     trainerPositions.filter((position) => position !== revealedPosition),
   );
 
-  return buildPrompt(center, revealedPosition, targetPosition);
+  return buildPrompt(
+    rotateCenter(center, rotationOffset),
+    revealedPosition,
+    targetPosition,
+  );
 }
